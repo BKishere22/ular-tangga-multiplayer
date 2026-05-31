@@ -3,222 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BALOK GAMING - Ular Tangga</title>
-    <!-- Import PeerJS untuk Multiplayer P2P Gratis -->
+    <title>BALOK GAMING - Ular Tangga Skill</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         /* Tema Esport Cyberpunk */
-        body { background-color: #0d0e15; color: #00ffcc; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
-        .container { max-width: 600px; margin: 0 auto; background: #1a1c29; padding: 20px; border-radius: 8px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        body { background-color: #0d0e15; color: #00ffcc; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
+        .container { max-width: 600px; margin: 0 auto; background: #1a1c29; padding: 20px; border-radius: 8px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); transition: 0.3s; }
         h2 { color: #ff0055; text-shadow: 0 0 5px #ff0055; margin-top: 0;}
-        button { padding: 10px 15px; margin: 5px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-        input { padding: 10px; background: #0d0e15; border: 1px solid #00ffcc; color: white; margin-bottom: 10px; border-radius: 4px; }
+        button { padding: 10px 15px; margin: 5px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
+        input { padding: 10px; background: #0d0e15; border: 1px solid #00ffcc; color: white; margin-bottom: 10px; border-radius: 4px; width: 80%; text-align: center; }
         
-        /* Tombol Spesifik */
         .btn-host { background-color: #00ffcc; color: #000; }
         .btn-join { background-color: #ff0055; color: #fff; }
-        .btn-dice { background-color: #f1c40f; color: #000; width: 100%; padding: 15px; font-size: 16px; margin-top: 15px;}
+        .btn-dice { background-color: #f1c40f; color: #000; width: 100%; padding: 15px; font-size: 16px; margin-top: 15px; }
         .btn-skill { background-color: #2980b9; color: #fff; font-size: 12px; }
+        .btn-copy { background-color: #333; color: white; font-size: 10px; padding: 5px 10px; margin-left: 5px; }
         
-        /* Panel Status & Log */
         .network-panel { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
-        .game-panel { display: none; } /* Disembunyikan sampai terhubung */
+        .game-panel { display: none; }
         .player-stats { display: flex; justify-content: space-around; margin: 15px 0; background: #0d0e15; padding: 15px; border-radius: 5px; border: 1px solid #333;}
         .log { margin-top: 20px; text-align: left; background: #000; padding: 10px; border-radius: 5px; height: 150px; overflow-y: scroll; font-family: monospace; color: #a9a9a9; border: 1px solid #333;}
-        .highlight { color: #00ffcc; font-weight: bold; }
+        .highlight { color: #00ffcc; font-weight: bold; font-size: 1.2em; }
+        .error-msg { color: #ff0055; font-size: 0.9em; margin-top: 5px;}
+
+        /* ANIMASI CSS */
+        @keyframes rollDiceAnim {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); background-color: #fff; }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .anim-rolling { animation: rollDiceAnim 0.6s ease-in-out; pointer-events: none; opacity: 0.8; }
+
+        @keyframes shakeAnim {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px) rotate(-1deg); }
+            50% { transform: translateX(10px) rotate(1deg); }
+            75% { transform: translateX(-10px) rotate(-1deg); }
+            100% { transform: translateX(0); }
+        }
+        .anim-shake { animation: shakeAnim 0.5s; border-color: #ff0055; box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); }
+        
+        @keyframes flashAnim {
+            0% { background-color: #1a1c29; }
+            50% { background-color: #00ffcc; }
+            100% { background-color: #1a1c29; }
+        }
+        .anim-flash { animation: flashAnim 0.5s; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="main-container">
         <h2>BALOK GAMING<br>ULAR TANGGA SKILL</h2>
         
-        <!-- Panel Jaringan (Host / Join) -->
         <div class="network-panel" id="network-panel">
-            <p>ID Kamu: <span id="my-id" class="highlight">Sedang memuat...</span></p>
+            <p>ID Kamu: <span id="my-id" class="highlight">Sedang memuat...</span> <button class="btn-copy" onclick="copyId()">📋 COPY</button></p>
+            <p style="font-size: 12px; color: gray;">Pemain 1 klik "Buat Room", Pemain 2 paste ID Pemain 1 lalu klik "Join Room"</p>
+            
             <button class="btn-host" onclick="createRoom()">🏠 Buat Room (P1)</button>
             <br><br>
-            <input type="text" id="join-id" placeholder="Masukkan ID Teman">
+            <input type="text" id="join-id" placeholder="Paste ID Teman Di Sini">
+            <br>
             <button class="btn-join" onclick="joinRoom()">🔗 Join Room (P2)</button>
             <p id="connection-status">Status: Belum Terhubung</p>
+            <p id="error-status" class="error-msg"></p>
         </div>
 
-        <!-- Panel Game -->
         <div class="game-panel" id="game-panel">
             <h3 id="turn-indicator" style="color: #f1c40f;">Menunggu Permainan Dimulai...</h3>
             
             <div class="player-stats">
-                <div id="p1-stat"><strong>Pemain 1 (Kamu)</strong><br>Posisi: 1<br>SP: 0</div>
-                <div id="p2-stat"><strong>Pemain 2 (Lawan)</strong><br>Posisi: 1<br>SP: 0</div>
+                <div id="p1-stat"><strong>Pemain 1</strong><br>Posisi: 1<br>SP: 0</div>
+                <div id="p2-stat"><strong>Pemain 2</strong><br>Posisi: 1<br>SP: 0</div>
             </div>
 
             <div id="action-buttons" style="display: none;">
                 <button class="btn-skill" onclick="useSkill('dash')">⚡ Dash (+2 Peta) [2 SP]</button>
                 <button class="btn-skill" onclick="useSkill('shield')">🛡️ Shield [3 SP]</button>
-                <button class="btn-dice" onclick="rollDice()">🎲 KOCOK DADU</button>
+                <button id="dice-btn" class="btn-dice" onclick="rollDice()">🎲 KOCOK DADU</button>
             </div>
 
-            <div class="log" id="game-log">> Let's Play game! Menunggu koneksi...</div>
+            <div class="log" id="game-log">> System Ready. Terhubung dengan server P2P...</div>
         </div>
     </div>
 
     <script>
+        // --- EFEK SUARA (Google Standard Audio URLs) ---
+        const sfxDice = new Audio('https://actions.google.com/sounds/v1/foley/rolling_dice.ogg');
+        const sfxSnake = new Audio('https://actions.google.com/sounds/v1/cartoon/slip_and_fall.ogg');
+        const sfxLadder = new Audio('https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg');
+        const sfxWin = new Audio('https://actions.google.com/sounds/v1/crowds/crowd_cheer.ogg');
+        const sfxSkill = new Audio('https://actions.google.com/sounds/v1/science_fiction/sci_fi_beep.ogg');
+
+        function playSound(audioEl) {
+            audioEl.currentTime = 0; // Reset agar bisa diputar cepat berulang-ulang
+            audioEl.play().catch(e => console.log("Audio diredam oleh browser:", e));
+        }
+
         // --- LOGIKA JARINGAN (PEERJS) ---
         let peer = new Peer(); 
         let conn;
         let isHost = false;
-        let myPlayerId = 0; // 1 untuk P1 (Host), 2 untuk P2 (Client)
+        let myPlayerId = 0; 
         
         peer.on('open', (id) => {
             document.getElementById('my-id').innerText = id;
         });
 
-        // Jika kita adalah P1 (Host) dan ada yang konek ke kita
-        peer.on('connection', (connection) => {
-            conn = connection;
-            isHost = true;
-            myPlayerId = 1;
-            setupConnection();
+        // Error Handling Jaringan
+        peer.on('error', (err) => {
+            document.getElementById('connection-status').innerText = "Status: Gagal Terhubung!";
+            document.getElementById('error-status').innerText = "Error: " + err.message + " (Coba refresh/cek ID)";
         });
 
-        function createRoom() {
-            document.getElementById('connection-status').innerText = "Status: Menunggu lawan join dengan ID kamu...";
-        }
-
-        function joinRoom() {
-            const hostId = document.getElementById('join-id').value;
-            if(!hostId) return alert("Masukkan ID dulu!");
-            conn = peer.connect(hostId);
-            myPlayerId = 2;
-            setupConnection();
-        }
-
-        function setupConnection() {
-            conn.on('open', () => {
-                document.getElementById('network-panel').style.display = 'none';
-                document.getElementById('game-panel').style.display = 'block';
-                logMsg("✅ Terhubung dengan lawan!");
-                
-                if (isHost) {
-                    // P1 mengirim instruksi untuk memulai game
-                    sendData({ type: 'START', turn: 1 });
-                    updateTurn(1);
-                }
-            });
-
-            // Menerima data dari lawan
-            conn.on('data', (data) => {
-                if (data.type === 'START') {
-                    updateTurn(data.turn);
-                } else if (data.type === 'SYNC') {
-                    // Sinkronisasi status dari aksi lawan
-                    players = data.players;
-                    updateUI();
-                    logMsg(data.msg);
-                    updateTurn(data.nextTurn);
-                }
-            });
-        }
-
-        function sendData(data) {
-            if(conn && conn.open) { conn.send(data); }
-        }
-
-        // --- LOGIKA GAME ---
-        const WIN_POS = 25; // Target finish (bisa diubah ke 100 nanti)
-        const snakesAndLadders = { 6: 15, 11: 3, 14: 22, 20: 8, 24: 16 };
-        
-        let players = {
-            1: { pos: 1, sp: 2, shield: false },
-            2: { pos: 1, sp: 2, shield: false }
-        };
-        let currentTurn = 0;
-
-        function updateUI() {
-            document.getElementById('p1-stat').innerHTML = `<strong>Pemain 1</strong><br>Posisi: ${players[1].pos}<br>SP: ${players[1].sp}<br>Status: ${players[1].shield ? '🛡️ Shield' : 'Normal'}`;
-            document.getElementById('p2-stat').innerHTML = `<strong>Pemain 2</strong><br>Posisi: ${players[2].pos}<br>SP: ${players[2].sp}<br>Status: ${players[2].shield ? '🛡️ Shield' : 'Normal'}`;
-        }
-
-        function logMsg(msg) {
-            const log = document.getElementById('game-log');
-            log.innerHTML += `<br>> ${msg}`;
-            log.scrollTop = log.scrollHeight;
-        }
-
-        function updateTurn(turn) {
-            currentTurn = turn;
-            const turnIndicator = document.getElementById('turn-indicator');
-            const actionButtons = document.getElementById('action-buttons');
-
-            if (currentTurn === myPlayerId) {
-                turnIndicator.innerText = "🎮 Giliran Kamu!";
-                actionButtons.style.display = "block"; // Tampilkan tombol dadu
-            } else {
-                turnIndicator.innerText = "⏳ Menunggu lawan bermain...";
-                actionButtons.style.display = "none"; // Sembunyikan tombol
-            }
-        }
-
-        // Aksi Game
-        function rollDice() {
-            let dice = Math.floor(Math.random() * 6) + 1;
-            processMove(dice, `Pemain ${myPlayerId} mengocok dadu: ${dice}`);
-        }
-
-        function useSkill(skill) {
-            let p = players[myPlayerId];
-            if (skill === 'dash' && p.sp >= 2) {
-                p.sp -= 2;
-                processMove(2, `⚡ Pemain ${myPlayerId} menggunakan DASH (+2 Langkah)`);
-            } else if (skill === 'shield' && p.sp >= 3) {
-                p.sp -= 3;
-                p.shield = true;
-                // Sinkronisasi penggunaan shield ke lawan
-                let nextTurn = myPlayerId === 1 ? 2 : 1;
-                let msg = `🛡️ Pemain ${myPlayerId} mengaktifkan SHIELD!`;
-                updateUI();
-                updateTurn(nextTurn);
-                sendData({ type: 'SYNC', players: players, msg: msg, nextTurn: nextTurn });
-                logMsg(msg);
-            } else {
-                alert("SP tidak cukup!");
-            }
-        }
-
-        function processMove(steps, actionMsg) {
-            let p = players[myPlayerId];
-            p.pos += steps;
-            
-            let finalMsg = actionMsg;
-
-            // Cek Menang
-            if (p.pos >= WIN_POS) {
-                p.pos = WIN_POS;
-                finalMsg += `<br>🎉 PEMAIN ${myPlayerId} MENANG!`;
-            } else {
-                // Cek Ular Tangga
-                if (snakesAndLadders[p.pos]) {
-                    let newPos = snakesAndLadders[p.pos];
-                    if (newPos < p.pos && p.shield) {
-                        finalMsg += `<br>🛡️ Selamat dari Ular karena SHIELD!`;
-                    } else {
-                        let type = newPos > p.pos ? "🪜 Naik Tangga" : "🐍 Digigit Ular";
-                        finalMsg += `<br>${type} ke petak ${newPos}`;
-                        p.pos = newPos;
-                    }
-                }
-            }
-
-            p.sp += 1; // Tambah SP pasif
-            p.shield = false; // Reset shield
-
-            let nextTurn = myPlayerId === 1 ? 2 : 1;
-            updateUI();
-            logMsg(finalMsg);
-            updateTurn(nextTurn); // Ganti giliran lokal
-            
-            // Kirim data ke lawan
-            sendData({ type: 'SYNC', players: players, msg: finalMsg, nextTurn: nextTurn });
-        }
-    </script>
-</body>
-</html>
+        function copyId() {
+            let text = document.getElementById('my-id').innerText;
+            navigator.clipboard.write
