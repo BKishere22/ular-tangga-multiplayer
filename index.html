@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BALOK GAMING - Ular Tangga</title>
+    <!-- Import PeerJS untuk Multiplayer P2P Gratis -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* Tema Esport Cyberpunk */
+        body { background-color: #0d0e15; color: #00ffcc; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
+        .container { max-width: 600px; margin: 0 auto; background: #1a1c29; padding: 20px; border-radius: 8px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        h2 { color: #ff0055; text-shadow: 0 0 5px #ff0055; margin-top: 0;}
+        button { padding: 10px 15px; margin: 5px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+        input { padding: 10px; background: #0d0e15; border: 1px solid #00ffcc; color: white; margin-bottom: 10px; border-radius: 4px; }
+        
+        /* Tombol Spesifik */
+        .btn-host { background-color: #00ffcc; color: #000; }
+        .btn-join { background-color: #ff0055; color: #fff; }
+        .btn-dice { background-color: #f1c40f; color: #000; width: 100%; padding: 15px; font-size: 16px; margin-top: 15px;}
+        .btn-skill { background-color: #2980b9; color: #fff; font-size: 12px; }
+        
+        /* Panel Status & Log */
+        .network-panel { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        .game-panel { display: none; } /* Disembunyikan sampai terhubung */
+        .player-stats { display: flex; justify-content: space-around; margin: 15px 0; background: #0d0e15; padding: 15px; border-radius: 5px; border: 1px solid #333;}
+        .log { margin-top: 20px; text-align: left; background: #000; padding: 10px; border-radius: 5px; height: 150px; overflow-y: scroll; font-family: monospace; color: #a9a9a9; border: 1px solid #333;}
+        .highlight { color: #00ffcc; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>BALOK GAMING<br>ULAR TANGGA SKILL</h2>
+        
+        <!-- Panel Jaringan (Host / Join) -->
+        <div class="network-panel" id="network-panel">
+            <p>ID Kamu: <span id="my-id" class="highlight">Sedang memuat...</span></p>
+            <button class="btn-host" onclick="createRoom()">🏠 Buat Room (P1)</button>
+            <br><br>
+            <input type="text" id="join-id" placeholder="Masukkan ID Teman">
+            <button class="btn-join" onclick="joinRoom()">🔗 Join Room (P2)</button>
+            <p id="connection-status">Status: Belum Terhubung</p>
+        </div>
+
+        <!-- Panel Game -->
+        <div class="game-panel" id="game-panel">
+            <h3 id="turn-indicator" style="color: #f1c40f;">Menunggu Permainan Dimulai...</h3>
+            
+            <div class="player-stats">
+                <div id="p1-stat"><strong>Pemain 1 (Kamu)</strong><br>Posisi: 1<br>SP: 0</div>
+                <div id="p2-stat"><strong>Pemain 2 (Lawan)</strong><br>Posisi: 1<br>SP: 0</div>
+            </div>
+
+            <div id="action-buttons" style="display: none;">
+                <button class="btn-skill" onclick="useSkill('dash')">⚡ Dash (+2 Peta) [2 SP]</button>
+                <button class="btn-skill" onclick="useSkill('shield')">🛡️ Shield [3 SP]</button>
+                <button class="btn-dice" onclick="rollDice()">🎲 KOCOK DADU</button>
+            </div>
+
+            <div class="log" id="game-log">> Let's Play game! Menunggu koneksi...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIKA JARINGAN (PEERJS) ---
+        let peer = new Peer(); 
+        let conn;
+        let isHost = false;
+        let myPlayerId = 0; // 1 untuk P1 (Host), 2 untuk P2 (Client)
+        
+        peer.on('open', (id) => {
+            document.getElementById('my-id').innerText = id;
+        });
+
+        // Jika kita adalah P1 (Host) dan ada yang konek ke kita
+        peer.on('connection', (connection) => {
+            conn = connection;
+            isHost = true;
+            myPlayerId = 1;
+            setupConnection();
+        });
+
+        function createRoom() {
+            document.getElementById('connection-status').innerText = "Status: Menunggu lawan join dengan ID kamu...";
+        }
+
+        function joinRoom() {
+            const hostId = document.getElementById('join-id').value;
+            if(!hostId) return alert("Masukkan ID dulu!");
+            conn = peer.connect(hostId);
+            myPlayerId = 2;
+            setupConnection();
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('network-panel').style.display = 'none';
+                document.getElementById('game-panel').style.display = 'block';
+                logMsg("✅ Terhubung dengan lawan!");
+                
+                if (isHost) {
+                    // P1 mengirim instruksi untuk memulai game
+                    sendData({ type: 'START', turn: 1 });
+                    updateTurn(1);
+                }
+            });
+
+            // Menerima data dari lawan
+            conn.on('data', (data) => {
+                if (data.type === 'START') {
+                    updateTurn(data.turn);
+                } else if (data.type === 'SYNC') {
+                    // Sinkronisasi status dari aksi lawan
+                    players = data.players;
+                    updateUI();
+                    logMsg(data.msg);
+                    updateTurn(data.nextTurn);
+                }
+            });
+        }
+
+        function sendData(data) {
+            if(conn && conn.open) { conn.send(data); }
+        }
+
+        // --- LOGIKA GAME ---
+        const WIN_POS = 25; // Target finish (bisa diubah ke 100 nanti)
+        const snakesAndLadders = { 6: 15, 11: 3, 14: 22, 20: 8, 24: 16 };
+        
+        let players = {
+            1: { pos: 1, sp: 2, shield: false },
+            2: { pos: 1, sp: 2, shield: false }
+        };
+        let currentTurn = 0;
+
+        function updateUI() {
+            document.getElementById('p1-stat').innerHTML = `<strong>Pemain 1</strong><br>Posisi: ${players[1].pos}<br>SP: ${players[1].sp}<br>Status: ${players[1].shield ? '🛡️ Shield' : 'Normal'}`;
+            document.getElementById('p2-stat').innerHTML = `<strong>Pemain 2</strong><br>Posisi: ${players[2].pos}<br>SP: ${players[2].sp}<br>Status: ${players[2].shield ? '🛡️ Shield' : 'Normal'}`;
+        }
+
+        function logMsg(msg) {
+            const log = document.getElementById('game-log');
+            log.innerHTML += `<br>> ${msg}`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateTurn(turn) {
+            currentTurn = turn;
+            const turnIndicator = document.getElementById('turn-indicator');
+            const actionButtons = document.getElementById('action-buttons');
+
+            if (currentTurn === myPlayerId) {
+                turnIndicator.innerText = "🎮 Giliran Kamu!";
+                actionButtons.style.display = "block"; // Tampilkan tombol dadu
+            } else {
+                turnIndicator.innerText = "⏳ Menunggu lawan bermain...";
+                actionButtons.style.display = "none"; // Sembunyikan tombol
+            }
+        }
+
+        // Aksi Game
+        function rollDice() {
+            let dice = Math.floor(Math.random() * 6) + 1;
+            processMove(dice, `Pemain ${myPlayerId} mengocok dadu: ${dice}`);
+        }
+
+        function useSkill(skill) {
+            let p = players[myPlayerId];
+            if (skill === 'dash' && p.sp >= 2) {
+                p.sp -= 2;
+                processMove(2, `⚡ Pemain ${myPlayerId} menggunakan DASH (+2 Langkah)`);
+            } else if (skill === 'shield' && p.sp >= 3) {
+                p.sp -= 3;
+                p.shield = true;
+                // Sinkronisasi penggunaan shield ke lawan
+                let nextTurn = myPlayerId === 1 ? 2 : 1;
+                let msg = `🛡️ Pemain ${myPlayerId} mengaktifkan SHIELD!`;
+                updateUI();
+                updateTurn(nextTurn);
+                sendData({ type: 'SYNC', players: players, msg: msg, nextTurn: nextTurn });
+                logMsg(msg);
+            } else {
+                alert("SP tidak cukup!");
+            }
+        }
+
+        function processMove(steps, actionMsg) {
+            let p = players[myPlayerId];
+            p.pos += steps;
+            
+            let finalMsg = actionMsg;
+
+            // Cek Menang
+            if (p.pos >= WIN_POS) {
+                p.pos = WIN_POS;
+                finalMsg += `<br>🎉 PEMAIN ${myPlayerId} MENANG!`;
+            } else {
+                // Cek Ular Tangga
+                if (snakesAndLadders[p.pos]) {
+                    let newPos = snakesAndLadders[p.pos];
+                    if (newPos < p.pos && p.shield) {
+                        finalMsg += `<br>🛡️ Selamat dari Ular karena SHIELD!`;
+                    } else {
+                        let type = newPos > p.pos ? "🪜 Naik Tangga" : "🐍 Digigit Ular";
+                        finalMsg += `<br>${type} ke petak ${newPos}`;
+                        p.pos = newPos;
+                    }
+                }
+            }
+
+            p.sp += 1; // Tambah SP pasif
+            p.shield = false; // Reset shield
+
+            let nextTurn = myPlayerId === 1 ? 2 : 1;
+            updateUI();
+            logMsg(finalMsg);
+            updateTurn(nextTurn); // Ganti giliran lokal
+            
+            // Kirim data ke lawan
+            sendData({ type: 'SYNC', players: players, msg: finalMsg, nextTurn: nextTurn });
+        }
+    </script>
+</body>
+</html>
