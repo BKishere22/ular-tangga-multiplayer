@@ -101,7 +101,16 @@
         }
 
         // --- LOGIKA JARINGAN (PEERJS) ---
-        let peer = new Peer(); 
+        // Menggunakan Google STUN Server gratis agar bisa menembus jaringan seluler/Wi-Fi yang ketat
+        let peer = new Peer({
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        }); 
         let conn;
         let isHost = false;
         let myPlayerId = 0; 
